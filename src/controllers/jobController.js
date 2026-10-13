@@ -71,39 +71,6 @@ export const getAvailableJobById = async (req, res, next) => {
   }
 };
 
-//update job
-// export const updateJob = async (req, res, next) => {
-//   try {
-//     const job = await Job.findByIdAndUpdate(req.params._id, req.body, {
-//       new: true,
-//       runValidators: true,
-//     });
-
-//     res.status(200).json({ message: "job updated successfully", job });
-
-//     if (!job) {
-//       return res.status(404).json({ message: "job not found" });
-//     }
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-//delete job
-// export const deleteJob = async (req, res, next) => {
-//   try {
-//     const job = await Job.findByIdAndDelete(req.params._id);
-
-//     res.status(200).json({ message: "job deleted successfully" });
-
-//     if (!job) {
-//       return res.status(404).json({ message: "job not found" });
-//     }
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 //get my jobs
 export const getCustomerJobs = async (req, res, next) => {
   try {
