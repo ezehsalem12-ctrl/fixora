@@ -59,13 +59,16 @@ export const getAvailableJob = async (req, res, next) => {
 
 export const getAvailableJobById = async (req, res, next) => {
   try {
-    const jobs = await Job.findById(req.params._id);
+    const job = await Job.findById(req.params.id);
 
-    if (!jobs) {
+    if (!job) {
       return res.status(404).json({ message: "job not found" });
     }
 
-    res.status(200).json({ message: "job found successfully", jobs });
+    res.status(200).json({
+      message: "job found successfully",
+      jobs: job,
+    });
   } catch (error) {
     next(error);
   }
