@@ -3,10 +3,10 @@ import Job from "../models/jobModel.js";
 export const createJob = async (req, res, next) => {
   try {
     //destruct
-    const { service, description, location, price } = req.body;
+    const { service, description, location, price, category } = req.body;
 
     //validate
-    if (!service || !description || !location || !price) {
+    if (!service || !description || !location || !price || !category) {
       return res
         .status(400)
         .json({ message: "please fill in the required fields" });
@@ -19,9 +19,43 @@ export const createJob = async (req, res, next) => {
       description,
       location,
       price,
+      category,
     });
 
     res.status(201).json({ message: "job created successfully", data: job });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//get job by category
+export const getJobByCategory = async (req, res, next) => {
+  try {
+    const { page, skip, limit } = req.pagination;
+
+    const category = req.params.category.toLowerCase();
+
+    const validCategories = Job.schema.path("category").enumValues;
+
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ message: "invalid job category" });
+    }
+
+    const jobs = await Job.find({
+      category,
+      status: "requested",
+      provider: null,
+    })
+      .populate("customer", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      message: "job found successfully",
+      jobs,
+      pagination: { limit, page },
+    });
   } catch (error) {
     next(error);
   }
@@ -42,6 +76,8 @@ export const getAvailableJob = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+
+    console.log(jobs);
 
     const totalJobs = await Job.countDocuments();
 
@@ -203,7 +239,7 @@ export const changeToReview = async (req, res, next) => {
 
     //check that this provider owns the job
     if (job.provider.toString() !== req.user._id.toString()) {
-      return res.status().json({ message: "unauthorized" });
+      return res.status(403).json({ message: "unauthorized" });
     }
 
     //change status
