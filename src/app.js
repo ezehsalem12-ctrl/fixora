@@ -11,6 +11,7 @@ const app = express();
 app.use(
   cors({
     origin: ["http://localhost:5173", "https://fixoraa-red.vercel.app/"],
+    credientials: true,
   }),
 );
 app.use(express.json());
