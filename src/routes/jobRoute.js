@@ -2,6 +2,8 @@ import express from "express";
 import {
   acceptJob,
   cancelJob,
+  changeCustomerJobStatus,
+  changeProviderJobStatus,
   changeToCompleted,
   changeToInProgress,
   changeToReview,
@@ -293,5 +295,9 @@ router.patch("/:jobId/completed/", authMiddleware, changeToCompleted);
  *         description: Job not found
  */
 router.patch("/:jobId/cancel/", authMiddleware, cancelJob);
+
+router.patch("/:id/provider-status/", authMiddleware, changeProviderJobStatus);
+
+router.patch("/:id/customer-status/", authMiddleware, changeCustomerJobStatus);
 
 export default router;

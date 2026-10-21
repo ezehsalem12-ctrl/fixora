@@ -1,4 +1,5 @@
 import Job from "../models/jobModel.js";
+import mongoose from "mongoose";
 
 export const createJob = async (req, res, next) => {
   try {
@@ -337,6 +338,213 @@ export const cancelJob = async (req, res, next) => {
     await job.save();
 
     return res.status(200).json({ message: "job cancelled successfully", job });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// export const changeJobStatus = async (req, res, next) => {
+//   try {
+//     const { id } = req.params;
+
+//     const { status } = req.body;
+
+//     const userId = String(req.user._id);
+
+//     const { role } = req.user;
+
+//     if (!isValidObjectId(id)) {
+//       return res.status(400).json({ message: "invalid id" });
+//     }
+
+//     const allowedStatus = [
+//       "accepted",
+//       "in_progress",
+//       "awaiting_review",
+//       "completed",
+//       "cancelled",
+//     ];
+
+//     if (!allowedStatus.includes(status)) {
+//       return res.status(400).json({ message: "invalid status" });
+//     }
+
+//     const job = await Job.findById(id);
+//     if (!job) {
+//       return res.status(404).json({ message: "job not found" });
+//     }
+
+//     let filter;
+
+//     let update;
+
+//     // label Customer Allowed Status
+//     if (role === "customer") {
+//       if (String(job.customer !== userId)) {
+//         return res
+//           .status(403)
+//           .json({ message: "you are not authorized to modify this job" });
+//       }
+//     }
+
+//     if (status !== "cancelled") {
+//       return res.status(403).json({ message: "only customer can cancel job" });
+//     }
+
+//     if (job.status !== "requested") {
+//       return res
+//         .status(400)
+//         .json({ message: "only requested jobs can be cancelled " });
+//     }
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+export const changeProviderJobStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const status = req.body?.status;
+
+    const userId = String(req.user._id);
+
+    if (req.user.role !== "provider") {
+      return res
+        .status(403)
+        .json({ message: "only providers can perform this action" });
+    }
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "invalid id" });
+    }
+
+    const transitions = {
+      accepted: "requested",
+      in_progress: "accepted",
+      awaiting_review: "in_progress",
+    };
+
+    if (!Object.hasOwn(transitions, status)) {
+      return res.status(400).json({
+        message: "Invalid provider status",
+      });
+    }
+
+    const filter = {
+      _id: id,
+      status: transitions[status],
+      ...(status === "accepted" ? { provider: null } : { provider: userId }),
+    };
+
+    // $set changes a field without replacing the entire document
+    const update = {
+      $set: {
+        status,
+        ...(status === "accepted" ? { provider: userId } : {}),
+      },
+    };
+
+    const job = await Job.findOneAndUpdate(filter, update, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("customer", "name")
+      .populate("provider", "name");
+
+    if (!job) {
+      const existingJob = await Job.findById(id);
+
+      if (!existingJob) {
+        return res.status(404).json({ message: "job not found" });
+      }
+
+      return res.status(409).json({
+        message:
+          "job is unavailable, has been assigned to another provider or has an inavalid transition status",
+        job,
+      });
+    }
+
+    res.status(200).json({ message: "status updated successfully", job });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const changeCustomerJobStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const status = req.body?.status;
+    const userId = String(req.user._id);
+
+    // Only customers can perform this action
+    if (req.user.role !== "customer") {
+      return res.status(403).json({
+        message: "Only customers can perform this action",
+      });
+    }
+
+    // Validate job ID
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        message: "Invalid job ID",
+      });
+    }
+
+    // Customer-authorized status transitions
+    const transitions = {
+      completed: "awaiting_review",
+      cancelled: ["requested", "accepted"],
+    };
+
+    if (!Object.hasOwn(transitions, status)) {
+      return res.status(400).json({
+        message: "Invalid customer status",
+      });
+    }
+
+    const allowedPreviousStatuses = Array.isArray(transitions[status])
+      ? transitions[status]
+      : [transitions[status]];
+
+    // Customers can update only their own jobs
+    const filter = {
+      _id: id,
+      customer: userId,
+      status: { $in: allowedPreviousStatuses },
+    };
+
+    const update = {
+      $set: { status },
+    };
+
+    const job = await Job.findOneAndUpdate(filter, update, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("customer", "name")
+      .populate("provider", "name");
+
+    if (!job) {
+      const existingJob = await Job.findById(id);
+
+      if (!existingJob) {
+        return res.status(404).json({
+          message: "Job not found",
+        });
+      }
+
+      return res.status(409).json({
+        message:
+          "Job cannot be updated because it does not belong to you or its current status does not allow this transition",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Job status updated successfully",
+      job,
+    });
   } catch (error) {
     next(error);
   }
