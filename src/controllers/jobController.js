@@ -495,7 +495,7 @@ export const changeCustomerJobStatus = async (req, res, next) => {
     // Customer-authorized status transitions
     const transitions = {
       completed: "awaiting_review",
-      cancelled: ["requested", "accepted"],
+      cancelled: ["requested"],
     };
 
     if (!Object.hasOwn(transitions, status)) {
